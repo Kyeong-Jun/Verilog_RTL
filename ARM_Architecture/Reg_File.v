@@ -8,7 +8,7 @@ parameter NUM = 4;
 input PCLK, W_ENABLE, PRESETn;
 input [AW-1:0] PADDR;
 input [DW-1:0] PWDATA;
-output reg [DW-1:0] PRDATA;
+output [DW-1:0] PRDATA;
 
 
 reg [DW-1:0] mem [0:NUM-1];
@@ -30,16 +30,19 @@ end
 
 
 //Read
-always @(PADDR, PWDATA) begin
+assign PRDATA = mem[PADDR[3:2]];
+/*
+always @(PADDR) begin
 	case(PADDR[3:2])
 		2'b00: PRDATA = mem[0];
 		2'b01: PRDATA = mem[1];
 		2'b10: PRDATA = mem[2];
 		2'b11: PRDATA = mem[3];
 	endcase
-		
-end
 
+
+end
+*/
 
 
 endmodule
