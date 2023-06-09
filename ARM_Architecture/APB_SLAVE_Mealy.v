@@ -26,6 +26,8 @@ parameter IDLE = 3'b000, WRITE_yet = 3'b001, WRITE = 3'b010, READ_yet = 3'b011, 
 
 
 
+
+
 always @(posedge PCLK, negedge PRESETn) begin
 	if(~PRESETn) ps <= IDLE;
 	else ps <= ns;
@@ -94,6 +96,12 @@ always @(ps, PADDR, PSELx, PENABLE, PWRITE, PWDATA, cnt) begin
 				PREADY = 1'b1;
 				W_ENABLE = 1'b0;
 				PRDATA = RDATA;
+				ns = IDLE;
+		end
+		
+		default: begin
+				W_ENABLE = 1'b0;
+				PREADY = 1'b0;
 				ns = IDLE;
 		end
 	endcase

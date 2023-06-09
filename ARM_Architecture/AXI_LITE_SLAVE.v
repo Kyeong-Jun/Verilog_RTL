@@ -4,7 +4,6 @@ module AXI_LITE_SLAVE(ACLK, ARESETn, AWVALID, AWADDR, AWREADY, WVALID, WDATA, WR
 ARVALID, ARADDR, ARREADY, RREADY, RVALID, RDATA, reg_RDATA, RRESP, r_ADDR, reg_WDATA, reg_w_en);
 parameter DW = 32;
 parameter AW = 32;
-parameter DELAY = 2;
 
 input ACLK, ARESETn;
 
@@ -39,7 +38,7 @@ assign BRESP = 2'b00;
 ////reg
 input  [DW-1:0] reg_RDATA;
 output [DW-1:0] reg_WDATA;
-output [15:0] r_ADDR;
+output [AW/2-1:0] r_ADDR;
 output reg reg_w_en;
 //assign reg_w_en = BVALID;
 assign reg_WDATA = WDATA;
@@ -50,8 +49,6 @@ localparam S0 = 2'b00, S1 = 2'b01, S2 = 2'b10, S3 = 2'b11;
 
 //Read Address
 reg AR_ps, AR_ns;
-reg AR_done;
-
 always @(posedge ACLK, negedge ARESETn) begin
 	if(~ARESETn) AR_ps <= S0;
 	else AR_ps <= AR_ns;
@@ -69,27 +66,26 @@ always @(AR_ps, ARVALID) begin
 			ARREADY = 1'b1;
             AR_ns = S0; 
 		end
+		
+		default: begin
+		  ARREADY = 1'b0;
+		  AR_ns = S0;
+		end
 	endcase
 end
 
 //READ
 reg [1:0] R_ps, R_ns;
 always @(posedge ACLK, negedge ARESETn) begin
-	if(~ARESETn) AR_done = 1'b0;
-	else if(AR_ps&~R_ps) AR_done = 1'b1;
-	else if(~AR_ps&R_ps) AR_done = 1'b0;
-end
-
-always @(posedge ACLK, negedge ARESETn) begin
 	if(~ARESETn) R_ps <= S0;
 	else R_ps <= R_ns;
 end
 
-always @(R_ps, AR_done, RREADY) begin
+always @(R_ps, AR_ps, RREADY) begin
 	case(R_ps)
 		S0: begin
 			RVALID = 1'b0;
-			if(AR_done) begin 
+			if(AR_ps==S1) begin 
 			     if(RREADY) R_ns = S2;
 			     else R_ns = S1;
 			end
@@ -106,6 +102,11 @@ always @(R_ps, AR_done, RREADY) begin
 			RVALID = 1'b1;
 			RDATA = reg_RDATA;
 			R_ns = S0;
+		end
+		
+		default: begin
+		  RVALID = 1'b0;
+		  R_ns = S0;
 		end
 	endcase
 end
@@ -129,13 +130,17 @@ always @(AW_ps, AWVALID) begin
 			AWREADY = 1'b1;
 			AW_ns = S0;
 		end
+		
+		default: begin
+		  AWREADY = 1'b0;
+		  AW_ns = S0;
+		end
 	endcase
 end
 
 
 //WRITE
 reg W_ps, W_ns;
-reg W_done;
 always @(posedge ACLK, negedge ARESETn) begin
 	if(~ARESETn) W_ps <= S0;
 	else W_ps <= W_ns;
@@ -153,6 +158,11 @@ always @(W_ps, WVALID) begin
 			WREADY = 1'b1;
 			W_ns = S0;
 		end
+		
+	   default: begin
+		  WREADY = 1'b0;
+		  W_ns = S0;
+		end	
 	endcase
 end
 
@@ -160,21 +170,16 @@ end
 //WRTE RESPONSE
 reg [1:0] B_ps, B_ns;
 always @(posedge ACLK, negedge ARESETn) begin
-	if(~ARESETn) W_done = 1'b0;
-	else if(W_ps&~B_ps) W_done = 1'b1;
-	else if(~W_ps&B_ps) W_done = 1'b0;
-end
-always @(posedge ACLK, negedge ARESETn) begin
 	if(~ARESETn) B_ps <= S0;
 	else B_ps <= B_ns;
 end
 
-always @(B_ps, W_done, BREADY) begin
+always @(B_ps, W_ps, BREADY) begin
 	case(B_ps)
 		S0: begin
 		    BVALID = 1'b0;
 			reg_w_en = 1'b0;
-			if(W_done) begin
+			if(W_ps==S1) begin
 				if(BREADY) B_ns = S2;
 				else B_ns = S1;
 			end 
@@ -193,6 +198,12 @@ always @(B_ps, W_done, BREADY) begin
 			reg_w_en = 1'b1;
 			B_ns = S0;
 		end
+		
+	   default: begin
+		    BVALID = 1'b0;
+			reg_w_en = 1'b0;
+		    B_ns = S0;
+		end	
 	endcase
 end
 
