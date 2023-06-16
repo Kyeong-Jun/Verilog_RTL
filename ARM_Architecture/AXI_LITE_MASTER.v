@@ -60,6 +60,7 @@ always @(posedge CLK, negedge RESETn) begin
     end
 end
 
+
 always @(posedge CLK) begin
     if(WRITE) WDATA = W_DATA;
 end 
@@ -69,7 +70,7 @@ assign  R_DATA = RDATA;
 
 
 //READ ADDRESS
-reg AR_ps, AR_ns;
+reg  [1:0] AR_ps, AR_ns;
 always @(posedge CLK, negedge RESETn) begin
 	if(~RESETn) AR_ps <= S0;
 	else AR_ps <= AR_ns;
@@ -79,18 +80,21 @@ always @(AR_ps, ARREADY, READ) begin
 	case(AR_ps)
 		S0: begin
 			ARVALID = 1'b0;
-            if(READ) AR_ns = S1; 
+            if(READ) begin
+                if(ARREADY) AR_ns = S2; //case: READY arrive late
+                else AR_ns  = S1; //case: READY arrive early
+            end
 			else AR_ns = S0;
 		end
 		
-		S1: begin
+		S1: begin  
 			ARVALID = 1'b1;
             if(ARREADY) AR_ns = S0; 
 			else AR_ns = S1;
 		end
-		
+
 		default: begin
-		  ARVALID = 1'b0;
+		  ARVALID = 1'b1;
 		  AR_ns = S0;
 		end
 	endcase
@@ -129,7 +133,7 @@ end
 
 
 //WRITE ADDRESS
-reg AW_ps, AW_ns;
+reg [1:0] AW_ps, AW_ns;
 always @(posedge CLK, negedge RESETn) begin
 	if(~RESETn) AW_ps <= S0;
 	else AW_ps <= AW_ns;
@@ -138,8 +142,11 @@ end
 always @(AW_ps, WRITE, AWREADY) begin
 	case(AW_ps)
 		S0: begin
-			AWVALID	= 1'b0;
-			if(WRITE) AW_ns = S1;
+			AWVALID = 1'b0;
+			if(WRITE) begin
+                if(AWREADY) AW_ns = S2; //case: READY arrive late
+                else AW_ns  = S1; //case: READY arrive early;
+			end
 			else AW_ns = S0;
 		end
 		
@@ -150,7 +157,7 @@ always @(AW_ps, WRITE, AWREADY) begin
 		end
 		
 		default: begin
-		  AWVALID = 1'b0;
+		  AWVALID = 1'b1;
 		  AW_ns = S0;
 		end
 	endcase
@@ -158,7 +165,7 @@ end
 
 
 //WRITE
-reg W_ps, W_ns;
+reg [1:0] W_ps, W_ns;
 always @(posedge CLK, negedge RESETn) begin
 	if(~RESETn) W_ps <= S0;
 	else W_ps <= W_ns;
@@ -168,7 +175,10 @@ always @(W_ps, WRITE, WREADY) begin
 	case(W_ps)
 		S0: begin
 			WVALID	= 1'b0;
-			if(WRITE) W_ns = S1;
+			if(WRITE) begin
+			     if(WREADY) W_ns = S2; //case: READY arrive late
+                else W_ns  = S1; //case: READY arrive early;
+			end
 			else W_ns = S0;
 		end
 		
@@ -179,7 +189,7 @@ always @(W_ps, WRITE, WREADY) begin
 		end
 		
 	   default: begin
-		  WVALID = 1'b0;
+		  WVALID = 1'b1;
 		  W_ns = S0;
 		end	
 	endcase
